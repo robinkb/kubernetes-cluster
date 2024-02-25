@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 
-# Because Make is an awful task runner,
+# Because Make is an awful task runner.
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
 function main() {
+    # shellcheck disable=SC2155 # This isn't going to fail.
     export ENV=$(cat .environment)
 
-    # Brain-dead argument parser
+    # Brain-dead argument parser.
+    # shellcheck disable=SC2068 # This requires splitting to work.
     $@
 }
 
+# flux-deploy deploys Flux as well as the flux-resources module,
+# which contains OCIRepositories and Kustomizations to deploy
+# all the other modules.
 function flux-deploy() {
     _load_config flux-system/flux.values.cue \
         | timoni --namespace flux-system apply flux \
@@ -24,48 +29,62 @@ function flux-deploy() {
             --values -
 }
 
+# build builds a Timoni module and prints the manifests to stdout.
 function build() {
     module_path="$1"
 
     _timoni build "$module_path"
 }
 
+# diff provides rudimentary diffing functionality and is presently quite bad.
 function diff() {
     module_path="$1"
 
     _timoni apply "$module_path" --diff --dry-run
 }
 
+# push builds a Timoni module and pushes the manifests to the OCI Registry.
 function push() {
     module_path="$1"
 
+    # shellcheck disable=SC1090 # There is no file to check.
     source <(_load_config_registry)
 
-    set -x
+    # shellcheck disable=SC2154 # Variables are set by _load_config_registry.
     build "$module_path" | \
         flux push artifact "oci://$ociRegistry_baseUrl/$module_path:$ociRegistry_tag" \
-            --path - --source local --revision $ociRegistry_tag
+            --path - --source local --revision "$ociRegistry_tag"
 }
 
+# _load_config uses SOPS to decrypt the secrets file, and Cue to combine
+# the environment config. Additional flags may be passed to Cue
+# to load additional flags or run expressions.
 function _load_config() {
-    sops exec-file config/$ENV-secrets.yaml \
+    sops exec-file "config/$ENV-secrets.yaml" \
         --filename secrets.yaml \
         "cue eval -p config {} config/schema.cue config/$ENV.cue $*"
 }
 
+# _load_config_registry builds on _load_config to extract configuration
+# for the OCI Registry.
 function _load_config_registry() {
     _load_config -e ociRegistry --out json | \
         jq -r 'keys[] as $k | "export ociRegistry_\($k)=\(.[$k])"'
 }
 
+# _timoni wraps around the Timoni CLI to feed in the global config,
+# and uses info extracted from the module path to determine the namespace,
+# module name, and module values file.
 function _timoni() {
     operation="$1"
     module_path="$2"
+    # shellcheck disable=SC2124
     flags="${@:3}"
 
     namespace=$(echo "$module_path" | cut -d "/" -f 3)
-    module_name=$(basename $module_path)
+    module_name=$(basename "$module_path")
 
+    # shellcheck disable=SC2086
     _load_config "$module_path.values.cue" | \
         timoni "$operation" --namespace "$namespace" \
             "$module_name" "$module_path" --values - $flags

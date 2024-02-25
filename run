@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# Because Make is an awful task runner,
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+function main() {
+    # Brain-dead argument parser
+    $@
+}
+
+function flux() {
+    _load_config flux-system/flux.values.cue \
+        | timoni --namespace flux-system apply flux \
+            oci://ghcr.io/stefanprodan/modules/flux-aio \
+			--values -
+	_load_config flux-system/flux-resources.values.cue \
+		| timoni --namespace flux-system apply flux-resources \
+			./flux-system/flux-resources \
+			--values -
+}
+
+function _load_config() {
+    sops exec-file config/$env-secrets.yaml \
+        --filename secrets.yaml \
+        "cue eval -p config {} config/schema.cue config/$env.cue $@"
+}
+
+main "$@"

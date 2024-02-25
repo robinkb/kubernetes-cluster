@@ -15,10 +15,10 @@ function main() {
     $@
 }
 
-# flux-deploy deploys Flux as well as the flux-resources module,
+# deploy installs Flux as well as the flux-resources module,
 # which contains OCIRepositories and Kustomizations to deploy
 # all the other modules.
-function flux-deploy() {
+function deploy() {
     _load_config flux-system/flux.values.cue \
         | timoni --namespace flux-system apply flux \
             oci://ghcr.io/stefanprodan/modules/flux-aio \
@@ -27,6 +27,12 @@ function flux-deploy() {
         | timoni --namespace flux-system apply flux-resources \
             ./flux-system/flux-resources \
             --values -
+}
+
+# destroy uninstalls the flux-resources module, which performs
+# an ordered uninstallation of all installed modules.
+function destroy() {
+    timoni delete -n flux-system flux-resources
 }
 
 # build builds a Timoni module and prints the manifests to stdout.

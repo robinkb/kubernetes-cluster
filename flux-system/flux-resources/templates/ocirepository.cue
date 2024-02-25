@@ -8,13 +8,29 @@ import (
 	#config: #Config
 	kind:    "OCIRepository"
 	metadata: {
-		name: "cluster-network-system-antrea"
+		name:      "cluster-network-system-antrea"
 		namespace: #config.metadata.namespace
-		labels: #config.metadata.labels
+		labels:    #config.metadata.labels
 	}
 	spec: ocirepository.#OCIRepositorySpec & {
 		interval: "10m"
 		url:      "oci://\(#config.ociRegistry.baseUrl)/modules/cluster/network-system/antrea"
+		ref: tag:        #config.ociRegistry.tag
+		secretRef: name: #ImagePullSecret.metadata.name
+	}
+}
+
+#OCIRepositoryNetworkCoreDNS: ocirepository.#OCIRepository & {
+	#config: #Config
+	kind:    "OCIRepository"
+	metadata: {
+		name:      "cluster-network-system-coredns"
+		namespace: #config.metadata.namespace
+		labels:    #config.metadata.labels
+	}
+	spec: ocirepository.#OCIRepositorySpec & {
+		interval: "10m"
+		url:      "oci://\(#config.ociRegistry.baseUrl)/modules/cluster/network-system/coredns"
 		ref: tag:        #config.ociRegistry.tag
 		secretRef: name: #ImagePullSecret.metadata.name
 	}

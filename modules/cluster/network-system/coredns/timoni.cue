@@ -5,7 +5,7 @@
 package main
 
 import (
-	templates "timoni.sh/flux-resources/templates"
+	templates "timoni.sh/coredns/templates"
 )
 
 // Define the schema for the user-supplied values.
@@ -38,9 +38,5 @@ timoni: {
 
 	// Pass Kubernetes resources outputted by the instance
 	// to Timoni's multi-step apply.
-	apply: {
-		base: [for obj in instance.objects.base {obj}]
-		antrea: [for obj in instance.objects.antrea {obj}]
-		coredns: [for obj in instance.objects.coredns {obj}]
-	}
+	apply: app: [for obj in instance.objects {obj}]
 }

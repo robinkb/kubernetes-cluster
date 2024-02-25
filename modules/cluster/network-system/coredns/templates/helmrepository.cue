@@ -7,8 +7,8 @@ import (
 #HelmRepository: helmrepository.#HelmRepository & {
 	#config:                            #Config
 	kind:                               "HelmRepository"
-	metadata: #config.metadata & {name: "antrea"}
+	metadata: #config.metadata & {name: "coredns"}
 	spec: helmrepository.#HelmRepositorySpec & {
-		url: "https://charts.antrea.io"
+		url: "https://coredns.github.io/helm"
 	}
 }

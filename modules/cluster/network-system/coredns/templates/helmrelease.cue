@@ -14,22 +14,28 @@ import (
 				kind: #HelmRepository.kind
 				name: #HelmRepository.metadata.name
 			}
-			chart:   "antrea"
-			version: "1.13.1"
+			chart:   "coredns"
+			version: "1.29.0"
 		}
 		driftDetection: {
 			mode: "warn"
 		}
 		interval:    "1h"
-		releaseName: "antrea"
+		releaseName: "coredns"
 		upgrade: {
 			crds: "CreateReplace"
 		}
 		values: {
-			kubeAPIServerOverride: "https://\(#config.controlPlaneEndpoint):6443"
-			trafficEncapMode:      "hybrid"
+			image: {
+				repository: "registry.k8s.io/coredns/coredns"
+				tag:        "v1.10.1"
+			}
 
-			antreaProxy: proxyAll: true
+			replicaCount: 2
+
+			service: {
+				clusterIP: #config.serviceIP
+			}
 		}
 	}
 }

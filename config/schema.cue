@@ -35,10 +35,10 @@ import (
 
 	// Sensible defaults that use IPs from the CGNAT space.
 	clusterNetwork: {
-		podSubnetRange:     net.IPCIDR | "100.64.0.0/10"
-		serviceSubnetRange: net.IPCIDR | "198.19.0.0/16"
-		dnsIP:              net.IPv4 | "198.19.0.10"
-		dnsDomain:          string | "cluster.local"
+		podSubnetRange:     net.IPCIDR | *"100.64.0.0/10"
+		serviceSubnetRange: net.IPCIDR | *"198.19.0.0/16"
+		dnsIP:              net.IPv4 | *"198.19.0.10"
+		dnsDomain:          string | *"cluster.local"
 	}
 
 	// TODO: Require at least one

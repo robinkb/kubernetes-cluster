@@ -1,6 +1,8 @@
 package templates
 
 import (
+	"net"
+
 	timoniv1 "timoni.sh/core/v1alpha1"
 )
 
@@ -30,13 +32,7 @@ import (
 	// The annotations allows adding `metadata.annotations` to all resources.
 	metadata: annotations?: timoniv1.#Annotations
 
-	// App settings.
-	ociRegistry: {
-		baseUrl:  string
-		username: string
-		password: string
-		tag:      string
-	}
+	serviceIP: net.IPv4
 }
 
 // Instance takes the config values and outputs the Kubernetes objects.
@@ -44,19 +40,7 @@ import (
 	config: #Config
 
 	objects: {
-		base: {
-			imagePullSecret: #ImagePullSecret & {#config: config}
-			namespaceNetwork: #NamespaceNetworkSystem & {#config: config}
-		}
-		antrea: {
-			ocirepo: #OCIRepositoryNetworkAntrea & {#config: config}
-			ks: #KustomizationNetworkAntrea & {#config: config}
-		}
-		coredns: {
-			ocirepo: #OCIRepositoryNetworkCoreDNS & {#config: config}
-			ks: #KustomizationNetworkCoreDNS & {#config: config}
-		}
+		hr: #HelmRelease & {#config: config}
+		helmrepo: #HelmRepository & {#config: config}
 	}
-
-	tests: {}
 }

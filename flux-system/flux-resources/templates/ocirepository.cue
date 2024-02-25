@@ -1,17 +1,16 @@
 package templates
 
 import (
-	timoniv1 "timoni.sh/core/v1alpha1"
-
 	ocirepository "source.toolkit.fluxcd.io/ocirepository/v1beta2"
 )
 
 #OCIRepositoryNetworkAntrea: ocirepository.#OCIRepository & {
 	#config: #Config
 	kind:    "OCIRepository"
-	metadata: timoniv1.#MetaComponent & {
-		#Meta:      #config.metadata
-		#Component: "network-system-antrea"
+	metadata: {
+		name: "cluster-network-system-antrea"
+		namespace: #config.metadata.namespace
+		labels: #config.metadata.labels
 	}
 	spec: ocirepository.#OCIRepositorySpec & {
 		interval: "10m"

@@ -7,11 +7,13 @@ set -o nounset
 set -o pipefail
 
 function main() {
+    export ENV=$(cat .environment)
+
     # Brain-dead argument parser
     $@
 }
 
-function flux() {
+function flux-deploy() {
     _load_config flux-system/flux.values.cue \
         | timoni --namespace flux-system apply flux \
             oci://ghcr.io/stefanprodan/modules/flux-aio \
@@ -22,10 +24,51 @@ function flux() {
             --values -
 }
 
+function build() {
+    module_path="$1"
+
+    _timoni build "$module_path"
+}
+
+function diff() {
+    module_path="$1"
+
+    _timoni apply "$module_path" --diff --dry-run
+}
+
+function push() {
+    module_path="$1"
+
+    source <(_load_config_registry)
+
+    set -x
+    build "$module_path" | \
+        flux push artifact "oci://$ociRegistry_baseUrl/$module_path:$ociRegistry_tag" \
+            --path - --source local --revision $ociRegistry_tag
+}
+
 function _load_config() {
-    sops exec-file config/$env-secrets.yaml \
+    sops exec-file config/$ENV-secrets.yaml \
         --filename secrets.yaml \
-        "cue eval -p config {} config/schema.cue config/$env.cue $@"
+        "cue eval -p config {} config/schema.cue config/$ENV.cue $*"
+}
+
+function _load_config_registry() {
+    _load_config -e ociRegistry --out json | \
+        jq -r 'keys[] as $k | "export ociRegistry_\($k)=\(.[$k])"'
+}
+
+function _timoni() {
+    operation="$1"
+    module_path="$2"
+    flags="${@:3}"
+
+    namespace=$(echo "$module_path" | cut -d "/" -f 3)
+    module_name=$(basename $module_path)
+
+    _load_config "$module_path.values.cue" | \
+        timoni "$operation" --namespace "$namespace" \
+            "$module_name" "$module_path" --values - $flags
 }
 
 main "$@"

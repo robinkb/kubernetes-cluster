@@ -8,7 +8,7 @@ ociRegistry: #OCIRegistry & {
 kubernetesCluster: #KubernetesCluster & {
 	name: "flamingo-testing"
 
-	kubernetesVersion: "1.27.7"
+	kubernetesVersion: "1.27.11"
 	kubepkgVersion:    "0.15.1"
 
 	controlPlaneEndpoint: "192.168.124.5"
@@ -38,32 +38,34 @@ kubernetesCluster: #KubernetesCluster & {
 		installDev: "/dev/vda"
 	}
 
-	machines: [_virtualMachine & {
-		name: "primero"
-		role: "controller"
-		mac:  "52:54:00:29:28:01"
-		ip:   "192.168.124.11"
-	}, _virtualMachine & {
-		name: "segundo"
-		role: "controller"
-		mac:  "52:54:00:29:28:01"
-		ip:   "192.168.124.11"
-	}, _virtualMachine & {
-		name: "tercero"
-		role: "controller"
-		mac:  "52:54:00:29:28:01"
-		ip:   "192.168.124.11"
-	}, _virtualMachine & {
-		name: "cuatro"
-		mac:  "52:54:00:29:28:01"
-		ip:   "192.168.124.11"
-	}, _virtualMachine & {
-		name: "quinto"
-		mac:  "52:54:00:29:28:01"
-		ip:   "192.168.124.11"
-	}, _virtualMachine & {
-		name: "sexto"
-		mac:  "52:54:00:29:28:01"
-		ip:   "192.168.124.11"
-	}]
+	machines: {
+		primero: _virtualMachine & {
+			role:      "controller"
+			bootstrap: true
+			mac:       "52:54:00:29:28:01"
+			ip:        "192.168.124.11"
+		}
+		segundo: _virtualMachine & {
+			role: "controller"
+			mac:  "52:54:00:29:28:02"
+			ip:   "192.168.124.12"
+		}
+		tercero: _virtualMachine & {
+			role: "controller"
+			mac:  "52:54:00:29:28:03"
+			ip:   "192.168.124.13"
+		}
+		cuatro: _virtualMachine & {
+			mac: "52:54:00:29:28:04"
+			ip:  "192.168.124.14"
+		}
+		quinto: _virtualMachine & {
+			mac: "52:54:00:29:28:05"
+			ip:  "192.168.124.15"
+		}
+		sexto: _virtualMachine & {
+			mac: "52:54:00:29:28:06"
+			ip:  "192.168.124.16"
+		}
+	}
 }

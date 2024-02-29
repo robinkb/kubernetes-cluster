@@ -62,6 +62,32 @@ function push() {
             --path - --source local --revision "$ociRegistry_tag"
 }
 
+# launch builds the bootstrap node for the dev environment.
+function launch() {
+    libvirt_images="/var/lib/libvirt/images"
+
+    node_name="primero"
+    node_image="$libvirt_images/fedora-coreos-39.20240210.3.0-qemu.x86_64.qcow2"
+    ignition_config="$PWD/target/$node_name/bootstrap.ign"
+    ignition_device_arg=(--qemu-commandline="-fw_cfg name=opt/com.coreos/config,file=${ignition_config}")
+
+    mkdir -p "$(dirname "$ignition_config" )"
+    _load_config butane/{schema,base,kubernetes_{node,init}}.cue \
+        -e butane --out yaml | butane | jq > "$ignition_config"
+
+    chcon --verbose --type virt_content_t "${node_image}"
+    # Setup the correct SELinux label to allow access to the config
+    chcon --verbose --type svirt_home_t "${ignition_config}"
+
+    sudo cp /usr/share/edk2/ovmf/OVMF_VARS.fd "/var/lib/libvirt/qemu/nvram/${node_name}.fd"
+    virt-install --connect qemu:///system --name "${node_name}" --vcpus 2 --memory 8192 \
+            --os-variant fedora-coreos-stable --import --graphics spice \
+            --disk="size=200,backing_store=${node_image}" \
+            --network network=default "${ignition_device_arg[@]}" \
+            --boot loader=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.secure=no,loader.type=pflash,nvram=/var/lib/libvirt/qemu/nvram/${node_name}.fd,hd,network \
+            --noautoconsole
+}
+
 # _load_config uses SOPS to decrypt the secrets file, and Cue to combine
 # the environment config. Additional flags may be passed to Cue
 # to load additional flags or run expressions.

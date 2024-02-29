@@ -21,7 +21,7 @@ import (
 	controlPlaneEndpoint: net.IPv4
 
 	dnsZone: {
-		name: string
+		name:        string
 		ipAddresses: list.Repeat([net.IPv4], 2)
 	}
 
@@ -44,14 +44,14 @@ import (
 	// TODO: Require at least one
 	sshAuthorizedKeys: [string, ...]
 
-	machines: [{
+	machines: [Name=_]: {
 		// Is this machine used to bootstrap the cluster?
-		bootstrap?: false
-		name:       string
+		bootstrap:  bool | *false
+		name:       Name
 		role:       *"worker" | "controller"
 		nic:        string
 		installDev: string
 		mac:        =~"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
 		ip:         net.IPv4
-	}, ...]
+	}
 }

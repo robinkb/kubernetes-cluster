@@ -177,7 +177,6 @@ butane: #Butane & {
 
 				[Service]
 				Type=oneshot
-				RemainAfterExit=yes
 				# CRI-O version should be matched to the Kubernetes version,
 				# but that's a pain and this is probably fine.
 				ExecStart=/usr/bin/rpm-ostree install --apply-live cri-o cri-tools conntrack-tools

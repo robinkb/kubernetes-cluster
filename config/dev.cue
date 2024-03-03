@@ -1,11 +1,16 @@
 package config
 
-ociRegistry: #OCIRegistry & {
+import (
+	"flamingo.systems/config/butane"
+	"flamingo.systems/config/schemas"
+)
+
+ociRegistry: schemas.#OCIRegistry & {
 	baseUrl: "ghcr.io/robinkb/kubernetes-cluster"
 	tag:     "testing"
 }
 
-kubernetesCluster: #KubernetesCluster & {
+cluster: schemas.#KubernetesCluster & {
 	name: "flamingo-testing"
 
 	kubernetesVersion: "1.27.11"
@@ -68,4 +73,16 @@ kubernetesCluster: #KubernetesCluster & {
 			ip:  "192.168.124.16"
 		}
 	}
+}
+
+// TODO: Streamline this.
+kubernetesController: {
+	instance: butane.#Instance & {
+		config: {
+			kubernetesCluster: cluster
+			machine:           cluster.machines.primero
+		}
+	}
+
+	bootstrapMachine: instance.BootstrapMachine
 }

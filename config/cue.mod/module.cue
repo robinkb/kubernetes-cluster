@@ -1,0 +1,1 @@
+module: "flamingo.systems/config"

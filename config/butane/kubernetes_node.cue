@@ -1,13 +1,21 @@
-import "encoding/yaml"
+package butane
 
-butane: #Butane & {
+import (
+	"encoding/yaml"
+	
+	"flamingo.systems/config/schemas"
+)
+
+KubernetesNode: schemas.#Butane & {
+	#config: #Config
+
 	storage: {
-		_disks: {
+		#disks: {
 			"/dev/disk/by-id/coreos-boot-disk": {
 				// We do not want to wipe the partition table because
 				// this is the primary device.
 				wipe_table: false
-				_partitions: {
+				#partitions: {
 					"4": {
 						label:    "root"
 						size_mib: 8 * 1024
@@ -28,7 +36,7 @@ butane: #Butane & {
 				}
 			}
 		}
-		_filesystems: {
+		#filesystems: {
 			"/var": {
 				device:          "/dev/disk/by-partlabel/var"
 				format:          "xfs"
@@ -43,27 +51,27 @@ butane: #Butane & {
 				with_mount_unit: true
 			}
 		}
-		_directories: {
+		#directories: {
 			"/etc/kubernetes/manifests": {}
 		}
-		_files: {
+		#files: {
 			"/usr/local/bin/kubectl": {
 				mode: 0o755
-				contents: source: "https://dl.k8s.io/v\(kubernetesCluster.kubernetesVersion)/bin/linux/amd64/kubectl"
+				contents: source: "https://dl.k8s.io/v\(#config.kubernetesCluster.kubernetesVersion)/bin/linux/amd64/kubectl"
 			}
 			"/usr/local/bin/kubeadm": {
 				mode: 0o755
-				contents: source: "https://dl.k8s.io/v\(kubernetesCluster.kubernetesVersion)/bin/linux/amd64/kubeadm"
+				contents: source: "https://dl.k8s.io/v\(#config.kubernetesCluster.kubernetesVersion)/bin/linux/amd64/kubeadm"
 			}
 			"/usr/local/bin/kubelet": {
 				mode: 0o755
-				contents: source: "https://dl.k8s.io/v\(kubernetesCluster.kubernetesVersion)/bin/linux/amd64/kubelet"
+				contents: source: "https://dl.k8s.io/v\(#config.kubernetesCluster.kubernetesVersion)/bin/linux/amd64/kubelet"
 			}
 			"/etc/systemd/system/kubelet.service": {
-				contents: source: "https://raw.githubusercontent.com/kubernetes/release/v\(kubernetesCluster.kubepkgVersion)/cmd/kubepkg/templates/latest/rpm/kubelet/kubelet.service"
+				contents: source: "https://raw.githubusercontent.com/kubernetes/release/v\(#config.kubernetesCluster.kubepkgVersion)/cmd/kubepkg/templates/latest/rpm/kubelet/kubelet.service"
 			}
 			"/etc/systemd/system/kubelet.service.d/10-kubeadm.conf": {
-				contents: source: "https://raw.githubusercontent.com/kubernetes/release/v\(kubernetesCluster.kubepkgVersion)/cmd/kubepkg/templates/latest/rpm/kubeadm/10-kubeadm.conf"
+				contents: source: "https://raw.githubusercontent.com/kubernetes/release/v\(#config.kubernetesCluster.kubepkgVersion)/cmd/kubepkg/templates/latest/rpm/kubeadm/10-kubeadm.conf"
 			}
 			"/etc/sysctl.d/10-kubernetes.conf": {
 				contents: inline: """
@@ -76,13 +84,13 @@ butane: #Butane & {
 				contents: inline: "br_netfilter"
 			}
 			"/etc/sysconfig/kubelet": {
-				contents: inline: "KUBELET_EXTRA_ARGS=--node-ip=\(machine.ip)"
+				contents: inline: "KUBELET_EXTRA_ARGS=--node-ip=\(#config.machine.ip)"
 			}
 			// TODO: Port over at some point
 			// "/etc/kubeadm.yaml": {
 			//  _append: node: inline:
 			// }
-			if machine.role == "controller" {
+			if #config.machine.role == "controller" {
 				"/etc/kubernetes/manifests/kube-vip.yaml": {
 					contents: inline: yaml.Marshal({apiVersion: "v1"
 								kind:                     "Pod"
@@ -103,7 +111,7 @@ butane: #Butane & {
 									value: "6443"
 								}, {
 									name:  "vip_interface"
-									value: machine.nic
+									value: #config.machine.nic
 								}, {
 									name:  "vip_cidr"
 									value: "32"
@@ -133,7 +141,7 @@ butane: #Butane & {
 									value: "1"
 								}, {
 									name:  "address"
-									value: kubernetesCluster.controlPlaneEndpoint
+									value: #config.kubernetesCluster.controlPlaneEndpoint
 								}, {
 									name:  "prometheus_server"
 									value: ":2112"
@@ -163,7 +171,7 @@ butane: #Butane & {
 			}
 		}
 	}
-	systemd: _units: {
+	systemd: #units: {
 		"rpm-ostree-extra-packages.service": {
 			enabled: true
 			contents: """

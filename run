@@ -72,8 +72,8 @@ function launch() {
     ignition_device_arg=(--qemu-commandline="-fw_cfg name=opt/com.coreos/config,file=${ignition_config}")
 
     mkdir -p "$(dirname "$ignition_config" )"
-    _load_config butane/{schema,base,kubernetes_{node,init}}.cue \
-        -e butane --out yaml | butane | jq > "$ignition_config"
+    _load_config -e kubernetesController.bootstrapMachine \
+        --out yaml | butane | jq > "$ignition_config"
 
     chcon --verbose --type virt_content_t "${node_image}"
     # Setup the correct SELinux label to allow access to the config
@@ -92,9 +92,11 @@ function launch() {
 # the environment config. Additional flags may be passed to Cue
 # to load additional flags or run expressions.
 function _load_config() {
-    sops exec-file "config/$ENV-secrets.yaml" \
+    pushd config/ >/dev/null
+    sops exec-file "$ENV-secrets.yaml" \
         --filename secrets.yaml \
-        "cue eval -p config {} config/schema.cue config/$ENV.cue $*"
+        "cue eval $ENV.cue $*"
+    popd >/dev/null
 }
 
 # _load_config_registry builds on _load_config to extract configuration

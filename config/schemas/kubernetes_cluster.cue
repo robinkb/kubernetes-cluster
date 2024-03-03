@@ -1,16 +1,9 @@
-package config
+package schemas
 
 import (
 	"list"
 	"net"
 )
-
-#OCIRegistry: {
-	baseUrl:  string
-	username: string | *"flux"
-	password: string
-	tag:      string
-}
 
 #KubernetesCluster: {
 	name: string
@@ -44,14 +37,7 @@ import (
 	// TODO: Require at least one
 	sshAuthorizedKeys: [string, ...]
 
-	machines: [Name=_]: {
-		// Is this machine used to bootstrap the cluster?
-		bootstrap:  bool | *false
-		name:       Name
-		role:       *"worker" | "controller"
-		nic:        string
-		installDev: string
-		mac:        =~"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
-		ip:         net.IPv4
+	machines: [Name=_]: #Machine & {
+		name: Name
 	}
 }

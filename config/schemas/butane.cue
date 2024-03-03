@@ -1,4 +1,4 @@
-package config
+package schemas
 
 import (
 	"list"
@@ -6,41 +6,41 @@ import (
 )
 
 // By no means a complete Butane spec, but enough to get me going.
-// The hidden fields are a workaround until associative lists are supported.
+// The definition fields are a workaround until associative lists are supported.
 // See: https://cuetorials.com/cueology/futurology/associative-lists/
 #Butane: {
 	version: string
 	variant: string
 
 	storage: {
-		_disks: [Device=_]: {
+		#disks: [Device=_]: {
 			device:     Device
 			wipe_table: bool | *false
-			_partitions: [Number=_]: {
+			#partitions: [Number=_]: {
 				number:   strconv.ParseInt(Number, 0, 0)
 				label:    string
 				size_mib: int
 				resize?:  bool | *false
 			}
-			partitions: list.Concat([ for key, obj in _partitions {[obj]}])
+			partitions: list.Concat([ for key, obj in #partitions {[obj]}])
 		}
-		disks: list.Concat([ for key, obj in _disks {[obj]}])
+		disks: list.Concat([ for key, obj in #disks {[obj]}])
 
-		_filesystems: [Path=_]: {
+		#filesystems: [Path=_]: {
 			path:            Path
 			device:          string
 			format:          string
 			wipe_filesystem: bool | *false
 			with_mount_unit: bool | *true
 		}
-		filesystems: list.Concat([ for key, obj in _filesystems {[obj]}])
+		filesystems: list.Concat([ for key, obj in #filesystems {[obj]}])
 
-		_directories: [Path=_]: {
+		#directories: [Path=_]: {
 			path: Path
 		}
-		directories: list.Concat([ for key, obj in _directories {[obj]}])
+		directories: list.Concat([ for key, obj in #directories {[obj]}])
 
-		_files: [Path=_]: {
+		#files: [Path=_]: {
 			path:  Path
 			mode?: number
 			contents?: {
@@ -53,19 +53,19 @@ import (
 			}
 			append: list.Concat([ for key, obj in _append {[obj]}])
 		}
-		files: list.Concat([ for key, obj in _files {[obj]}])
+		files: list.Concat([ for key, obj in #files {[obj]}])
 	}
 
 	passwd: {
-		_users: [Name=_]: {
+		#users: [Name=_]: {
 			name: Name
 			ssh_authorized_keys: [string, ...]
 		}
-		users: list.Concat([ for key, obj in _users {[obj]}])
+		users: list.Concat([ for key, obj in #users {[obj]}])
 	}
 
 	systemd: {
-		_units: [Name=_]: {
+		#units: [Name=_]: {
 			name:      Name
 			enabled:   bool
 			mask?:     bool
@@ -75,6 +75,6 @@ import (
 				contents: string
 			}]
 		}
-		units: list.Concat([ for key, obj in _units {[obj]}])
+		units: list.Concat([ for key, obj in #units {[obj]}])
 	}
 }

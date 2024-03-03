@@ -1,9 +1,17 @@
-import "encoding/yaml"
+package butane
 
-butane: #Butane & {
-	storage: _files: {
+import (
+	"encoding/yaml"
+	
+	"flamingo.systems/config/schemas"
+)
+
+KubernetesInit: schemas.#Butane & {
+	#config: #Config
+
+	storage: #files: {
 		"/etc/kubeadm.yaml": {
-			_append: {
+			#append: {
 				initConfiguration: {
 					inline: yaml.Marshal({
 						apiVersion: "kubeadm.k8s.io/v1beta3"
@@ -18,7 +26,7 @@ butane: #Butane & {
 							taints: []
 						}
 						localAPIEndpoint: {
-							advertiseAddress: machine.ip
+							advertiseAddress: #config.machine.ip
 							bindPort:         6443
 						}
 						skipPhases: [
@@ -38,7 +46,7 @@ butane: #Butane & {
 			}
 		}
 	}
-	systemd: _units: {
+	systemd: #units: {
 		"kubeadm.service": {
 			enabled: true
 			contents: """

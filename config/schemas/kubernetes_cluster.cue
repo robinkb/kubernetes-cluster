@@ -8,8 +8,8 @@ import (
 #KubernetesCluster: {
 	name: string
 
-	kubernetesVersion: string
-	kubepkgVersion:    string
+	kubernetesVersion: =~"^[0-9].[0-9]+.[0-9]+$"
+	kubepkgVersion:    =~"^[0-9].[0-9]+.[0-9]+$"
 
 	controlPlaneEndpoint: net.IPv4
 

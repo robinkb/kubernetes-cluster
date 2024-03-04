@@ -13,7 +13,7 @@ KubernetesInit: schemas.#Butane & {
 		"/etc/kubeadm.yaml": {
 			#append: {
 				initConfiguration: {
-					inline: yaml.Marshal({
+					inline: "---\n" + yaml.Marshal({
 						apiVersion: "kubeadm.k8s.io/v1beta3"
 						kind:       "InitConfiguration"
 						nodeRegistration: {

@@ -87,13 +87,142 @@ KubernetesNode: schemas.#Butane & {
 				contents: inline: "KUBELET_EXTRA_ARGS=--node-ip=\(#config.machine.ip)"
 			}
 			// TODO: Port over at some point
-			// "/etc/kubeadm.yaml": {
-			//  _append: node: inline:
-			// }
+			"/etc/kubeadm.yaml": {
+				#append: {
+					clusterConfiguration: {
+						inline: "---\n" + yaml.Marshal({
+							apiVersion: "kubeadm.k8s.io/v1beta3"
+							kind:       "ClusterConfiguration"
+							apiServer: {
+								timeoutForControlPlane: "4m0s"
+							}
+							certificatesDir:      "/etc/kubernetes/pki"
+							clusterName:          #config.kubernetesCluster.name
+							controlPlaneEndpoint: #config.kubernetesCluster.controlPlaneEndpoint
+							controllerManager: {
+								extraArgs: {
+									// Default location /usr/libexec is read-only in CoreOS.
+									"flex-volume-plugin-dir": "/usr/local/libexec/kubernetes/kubelet-plugins/volume/exec/"
+								}
+							}
+							dns: {}
+							etcd: {
+								local: {
+									dataDir: "/var/lib/etcd"
+								}
+							}
+							imageRepository:   "registry.k8s.io"
+							kubernetesVersion: #config.kubernetesCluster.kubernetesVersion
+							networking: {
+								dnsDomain:     #config.kubernetesCluster.clusterNetwork.dnsDomain
+								podSubnet:     #config.kubernetesCluster.clusterNetwork.podSubnet
+								serviceSubnet: #config.kubernetesCluster.clusterNetwork.serviceSubnet
+							}
+							scheduler: {}
+						})
+					}
+					kubeletConfiguration: {
+						inline: "---\n" + yaml.Marshal({
+							apiVersion: "kubelet.config.k8s.io/v1beta1"
+							kind:       "KubeletConfiguration"
+							authentication: {
+								anonymous: {
+									enabled: false
+								}
+								webhook: {
+									cacheTTL: "0s"
+									enabled:  true
+								}
+								x509: {
+									clientCAFile: "/etc/kubernetes/pki/ca.crt"
+								}
+							}
+							authorization: {
+								mode: "Webhook"
+								webhook: {
+									cacheAuthorizedTTL:   "0s"
+									cacheUnauthorizedTTL: "0s"
+								}
+							}
+							// cgroupDriver is the driver kubelet uses to manipulate CGroups on the host
+							// (cgroupfs or systemd). The host uses systemd already, so we should stick
+							// with that to avoid having two separate views of cgroups.
+							cgroupDriver:  "systemd"
+							clusterDNS:    #config.kubernetesCluster.clusterNetwork.dnsIP
+							clusterDomain: #config.kubernetesCluster.clusterNetwork.dnsDomain
+							// containerRuntimeEndpoint is the endpoint of container runtime.
+							// Currently only cri-o is supported.
+							containerRuntimeEndpoint: "unix:///var/run/crio/crio.sock"
+							// cpuManagerReconcilePeriod is the reconciliation period for the CPU Manager.
+							cpuManagerReconcilePeriod: "10s"
+							// evictionPressureTransitionPeriod is the duration for which the kubelet
+							// has to wait before transitioning out of an eviction pressure condition.
+							evictionPressureTransitionPeriod: "5ms"
+							// fileCheckFrequency is the duration between checking config files for new data.
+							fileCheckFrequency: "20s"
+							healthzBindAddress: "127.0.0.1"
+							healthzPort:        10248
+							// httpCheckFrequency is the duration between checking http for new data.
+							httpCheckFrequency: "20s"
+							// imageMinimumGCAge is the minimum age for an unused image before it is
+							// garbage collected.
+							imageMinimumGCAge: "2m"
+							// imageMaximumGCAge is the maximum age an image can be unused before it is
+							// garbage collected.
+							imageMaximumGCAge: "7d"
+							// imageGCHighThresholdPercent is the percent of disk usage after which image
+							// garbage collection is always run. The percent is calculated by dividing this
+							// field value by 100, so this field must be between 0 and 100, inclusive.
+							// When specified, the value must be greater than imageGCLowThresholdPercent.
+							imageGCHighThresholdPercent: 85
+							// imageGCLowThresholdPercent is the percent of disk usage before which image
+							// garbage collection is never run. Lowest disk usage to garbage collect to.
+							// The percent is calculated by dividing this field value by 100, so the
+							// field value must be between 0 and 100, inclusive.
+							// When specified, the value must be less than imageGCHighThresholdPercent.
+							imageGCLowThresholdPercent: 50
+							logging: {
+								flushFrequency: 0
+								options: {
+									json: {
+										infoBufferSize: 0
+									}
+								}
+								verbosity: 0
+							}
+							maxParallelImagePulls: 5
+							memorySwap: {}
+							// nodeStatusReportFrequency is the frequency that kubelet posts node status
+							// to master if node status does not change. Kubelet will ignore this frequency
+							// and post node status immediately if any change is detected.
+							// It is only used when node lease feature is enabled.
+							nodeStatusReportFrequency: "5m"
+							// nodeLeaseDurationSeconds is the duration the Kubelet will set on its
+							// corresponding Lease. NodeLease provides an indicator of node health
+							// by having the Kubelet create and periodically renew a lease,
+							// named after the node, in the kube-node-lease namespace. If the lease
+							// expires, the node can be considered unhealthy.
+							nodeLeaseDurationSeconds:        10
+							resolveConfig:                   "/run/systemd/resolve/resolv.conf"
+							rotateCertificates:              true
+							runtimeRequestTimeout:           "2m"
+							serializeImagePulls:             false
+							serverTLSBootstrap:              true
+							shutdownGracePeriod:             "10m"
+							shutdownGracePeriodCriticalPods: "0s"
+							staticPodPath:                   "/etc/kubernetes/manifests"
+							streamingConnectionIdleTimeout:  "4h"
+							syncFrequency:                   "1m"
+							volumeStatsAggPeriod:            "1m"
+						})
+					}
+				}
+			}
 			if #config.machine.role == "controller" {
 				"/etc/kubernetes/manifests/kube-vip.yaml": {
-					contents: inline: yaml.Marshal({apiVersion: "v1"
-								kind:                     "Pod"
+					contents: inline: yaml.Marshal({
+						apiVersion: "v1"
+						kind:       "Pod"
 						metadata: {
 							name:      "kube-vip"
 							namespace: "kube-system"

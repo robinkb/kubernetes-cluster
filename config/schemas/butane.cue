@@ -47,11 +47,11 @@ import (
 				source?: string
 				inline?: string
 			}
-			_append: [Name=_]: {
+			#append: [Name=_]: {
 				_name:  Name
 				inline: string
 			}
-			append: list.Concat([ for key, obj in _append {[obj]}])
+			append: list.Concat([ for key, obj in #append {[obj]}])
 		}
 		files: list.Concat([ for key, obj in #files {[obj]}])
 	}

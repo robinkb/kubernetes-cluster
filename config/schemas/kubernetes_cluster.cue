@@ -28,14 +28,15 @@ import (
 
 	// Sensible defaults that use IPs from the CGNAT space.
 	clusterNetwork: {
-		podSubnetRange:     net.IPCIDR | *"100.64.0.0/10"
-		serviceSubnetRange: net.IPCIDR | *"198.19.0.0/16"
-		dnsIP:              net.IPv4 | *"198.19.0.10"
-		dnsDomain:          string | *"cluster.local"
+		podSubnet:     net.IPCIDR | *"100.64.0.0/10"
+		serviceSubnet: net.IPCIDR | *"198.19.0.0/16"
+		dnsIP:         [net.IPv4, ...] | *["198.19.0.10"]
+		dnsIP:         list.MinItems(1)
+		dnsDomain:     string | *"cluster.local"
 	}
 
-	// TODO: Require at least one
 	sshAuthorizedKeys: [string, ...]
+	sshAuthorizedKeys: list.MinItems(1)
 
 	machines: [Name=_]: #Machine & {
 		name: Name

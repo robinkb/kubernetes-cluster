@@ -15,18 +15,10 @@ function main() {
     $@
 }
 
-# deploy installs Flux as well as the flux-resources module,
-# which contains OCIRepositories and Kustomizations to deploy
-# all the other modules.
+# deploy installs the given bundle located under `bundles/`.
 function deploy() {
-    _load_config flux-system/flux.values.cue \
-        | timoni --namespace flux-system apply flux \
-            oci://ghcr.io/stefanprodan/modules/flux-aio \
-            --values -
-    _load_config flux-system/flux-resources.values.cue \
-        | timoni --namespace flux-system apply flux-resources \
-            ./flux-system/flux-resources \
-            --values -
+    bundle=$1
+    _load_config | timoni bundle apply -f "bundles/$bundle.cue" -f -
 }
 
 # destroy uninstalls the flux-resources module, which performs
@@ -95,7 +87,7 @@ function _load_config() {
     pushd config/ >/dev/null
     sops exec-file "$ENV-secrets.yaml" \
         --filename secrets.yaml \
-        "cue eval $ENV.cue $*"
+        "cue eval -p config {} $ENV.cue $*"
     popd >/dev/null
 }
 

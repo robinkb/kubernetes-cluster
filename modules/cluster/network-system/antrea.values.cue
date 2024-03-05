@@ -1,3 +1,0 @@
-values: {
-	controlPlaneEndpoint: kubernetesCluster.controlPlaneEndpoint
-}

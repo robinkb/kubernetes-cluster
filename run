@@ -72,7 +72,7 @@ function launch() {
     chcon --verbose --type svirt_home_t "${ignition_config}"
 
     sudo cp /usr/share/edk2/ovmf/OVMF_VARS.fd "/var/lib/libvirt/qemu/nvram/${node_name}.fd"
-    virt-install --connect qemu:///system --name "${node_name}" --vcpus 2 --memory 8192 \
+    virt-install --connect qemu:///system --name "${node_name}" --vcpus 4 --memory 8192 \
             --os-variant fedora-coreos-stable --import --graphics spice \
             --disk="size=200,backing_store=${node_image}" \
             --network network=default "${ignition_device_arg[@]}" \

@@ -7,6 +7,16 @@ bundle: {
 	name:       "security-system"
 
 	instances: {
+		// Deploy resources before kubelet-csr-approver so that the DNS
+		// queries succeed when it first starts.
+		"kubelet-csr-approver-resources": {
+			module: url: "file://../modules/cluster/security-system/kubelet-csr-approver-resources"
+			namespace: "security-system"
+			values: {
+				machines: cluster.machines
+			}
+		}
+
 		"kubelet-csr-approver": {
 			module: url: "oci://ghcr.io/stefanprodan/modules/flux-helm-release"
 			namespace: "security-system"
@@ -19,8 +29,8 @@ bundle: {
 				helmValues: {
 					replicas: 1
 
-					providerRegex: "^\(strings.Join([ for machine in cluster.machines {machine.name}], "|"))$"
-					providerIpPrefixes: [ for machine in cluster.machines {"\(machine.ip)/32"}]
+					providerRegex: "^\(strings.Join([for machine in cluster.machines {machine.name}], "|"))$"
+					providerIpPrefixes: [for machine in cluster.machines {"\(machine.ip)/32"}]
 
 					maxExpirationSeconds: ""
 					// Enabled by a headless service per node that are created below.
@@ -32,14 +42,6 @@ bundle: {
 					bypassHostnameCheck: false
 					// optional, list of IP (IPv4, IPv6) subnets that are allowed to submit CSRs
 				}
-			}
-		}
-
-		"kubelet-csr-approver-resources": {
-			module: url: "file://../modules/cluster/security-system/kubelet-csr-approver-resources"
-			namespace: "security-system"
-			values: {
-				machines: cluster.machines
 			}
 		}
 

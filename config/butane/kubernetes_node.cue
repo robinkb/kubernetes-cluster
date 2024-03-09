@@ -203,7 +203,7 @@ KubernetesNode: schemas.#Butane & {
 							// named after the node, in the kube-node-lease namespace. If the lease
 							// expires, the node can be considered unhealthy.
 							nodeLeaseDurationSeconds:        10
-							resolveConfig:                   "/run/systemd/resolve/resolv.conf"
+							resolvConfig:                    "/run/systemd/resolve/resolv.conf"
 							rotateCertificates:              true
 							runtimeRequestTimeout:           "2m"
 							serializeImagePulls:             false

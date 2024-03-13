@@ -86,7 +86,6 @@ KubernetesNode: schemas.#Butane & {
 			"/etc/sysconfig/kubelet": {
 				contents: inline: "KUBELET_EXTRA_ARGS=--node-ip=\(#config.machine.ip)"
 			}
-			// TODO: Port over at some point
 			"/etc/kubeadm.yaml": {
 				#append: {
 					clusterConfiguration: {
@@ -203,7 +202,7 @@ KubernetesNode: schemas.#Butane & {
 							// named after the node, in the kube-node-lease namespace. If the lease
 							// expires, the node can be considered unhealthy.
 							nodeLeaseDurationSeconds:        10
-							resolvConfig:                    "/run/systemd/resolve/resolv.conf"
+							resolvConf:                      "/run/systemd/resolve/resolv.conf"
 							rotateCertificates:              true
 							runtimeRequestTimeout:           "2m"
 							serializeImagePulls:             false

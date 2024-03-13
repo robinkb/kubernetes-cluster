@@ -30,16 +30,20 @@ KubernetesInit: schemas.#Butane & {
 							bindPort:         6443
 						}
 						skipPhases: [
-							// ClusterConfiguration and KubeletConfiguration are managed by Terraform.
+							// ClusterConfiguration and KubeletConfiguration are managed by us.
 							// Kubeadm always reads these from the cluster while joining a node.
 							// The on-disk files are ignored. So must be modified in-cluster.
 							"upload-config/kubeadm",
 							"upload-config/kubelet",
-							// We are installing CoreDNS through Terraform for more control
-							// over its management and to decouple CoreDNS from node provisioning.
+							// We don't use the bootstrap token for joining nodes.
+							"bootstrap-token",
+							// We are installing CoreDNS ourselves for more control
+							// over its management and to decouple CoreDNS from cluster provisioning.
 							"addon/coredns",
 							// We completely replace kube-proxy by whatever CNI we use.
 							"addon/kube-proxy",
+							// We don't join nodes manually in this house.
+							"show-join-command",
 						]
 					})
 				}

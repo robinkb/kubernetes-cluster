@@ -18,8 +18,8 @@ package templates
 		// Don't want to change the key.
 		refreshInterval: "0"
 		target: {
-			name:      "longhorn-crypto-key"
-            // Ensure that nothing short of deleting it will change the Secret.
+			name: "longhorn-crypto-key"
+			// Ensure that nothing short of deleting it will change the Secret.
 			immutable: true
 			template: {
 				data: {

@@ -106,8 +106,7 @@ import (
 				labels: #config.metadata.labels
 			}
 			spec: {
-				// TODO: Don't use default class
-				storageClassName: "longhorn"
+				storageClassName: "lh-block-nvme-r2"
 				accessModes: ["ReadWriteOnce"]
 				resources: {
 					requests: {
@@ -121,8 +120,7 @@ import (
 				labels: #config.metadata.labels
 			}
 			spec: {
-				// TODO: Don't use default class
-				storageClassName: "longhorn"
+				storageClassName: "lh-block-nvme-r2"
 				accessModes: ["ReadWriteOnce"]
 				resources: {
 					requests: {

@@ -1,6 +1,7 @@
 package butane
 
 import (
+	"encoding/json"
 	"encoding/yaml"
 	
 	"flamingo.systems/config/schemas"
@@ -22,13 +23,17 @@ KubernetesNode: schemas.#Butane & {
 						resize:   true
 					}
 					"5": {
-						size_mib: 50 * 1024
+						size_mib: 30 * 1024
 						// We assign a descriptive label to the partition.
 						// This allows for referring to it in a device-agnostic
 						// way in other parts of the configuration.
 						label: "var"
 					}
 					"6": {
+						size_mib: 30 * 1024
+						label:    "registry"
+					}
+					"7": {
 						// Take the remainder of the disk.
 						size_mib: 0
 						label:    "data-nvme"
@@ -43,6 +48,13 @@ KubernetesNode: schemas.#Butane & {
 				wipe_filesystem: true
 				with_mount_unit: true
 			}
+			"/var/lib/registry": {
+				device: "/dev/disk/by-partlabel/registry"
+				format: "xfs"
+				// Registry data should not be wiped.
+				wipe_filesystem: false
+				with_mount_unit: true
+			}
 			"/var/lib/longhorn": {
 				device: "/dev/disk/by-partlabel/data-nvme"
 				format: "ext4"
@@ -53,6 +65,9 @@ KubernetesNode: schemas.#Butane & {
 		}
 		#directories: {
 			"/etc/kubernetes/manifests": {}
+			"/etc/keepalived": {}
+			"/etc/haproxy": {}
+			"/etc/zot": {}
 		}
 		#files: {
 			"/usr/local/bin/kubectl": {
@@ -218,81 +233,288 @@ KubernetesNode: schemas.#Butane & {
 				}
 			}
 			if #config.machine.role == "controller" {
-				"/etc/kubernetes/manifests/kube-vip.yaml": {
+				"/etc/keepalived/keepalived.conf": {
+					contents: inline: """
+						! /etc/keepalived/keepalived.conf
+						! Configuration File for keepalived
+						global_defs {
+						    router_id LVS_DEVEL
+						}
+						vrrp_script check_apiserver {
+						    script "/etc/keepalived/check_apiserver.sh"
+						    interval 3
+						    weight -2
+						    fall 10
+						    rise 2
+						}
+
+						vrrp_instance VI_1 {
+						    state BACKUP
+						    nopreempt
+						    interface \(#config.machine.nic)
+						    virtual_router_id 51
+						    priority 100
+						    authentication {
+						        auth_type PASS
+						        auth_pass 42
+						    }
+						    virtual_ipaddress {
+						        \(#config.kubernetesCluster.controlPlaneEndpoint)
+						    }
+						    track_script {
+						        check_apiserver
+						    }
+						}
+						"""
+				}
+				"/etc/keepalived/check_apiserver.sh": {
+					contents: inline: """
+						#!/bin/sh
+
+						errorExit() {
+						    echo "*** $*" 1>&2
+						    exit 1
+						}
+
+						curl --silent --max-time 2 --insecure https://localhost:6443/ -o /dev/null || errorExit "Error GET https://localhost:6443/"
+						if ip addr | grep -q \(#config.kubernetesCluster.controlPlaneEndpoint); then
+						    curl --silent --max-time 2 --insecure https://\(#config.kubernetesCluster.controlPlaneEndpoint):6443/ -o /dev/null || errorExit "Error GET https://\(#config.kubernetesCluster.controlPlaneEndpoint):6443/"
+						fi
+						"""
+				}
+				"/etc/kubernetes/manifests/keepalived.yaml": {
 					contents: inline: yaml.Marshal({
 						apiVersion: "v1"
 						kind:       "Pod"
 						metadata: {
-							name:      "kube-vip"
+							name:      "keepalived"
 							namespace: "kube-system"
 						}
 						spec: {
 							containers: [{
-								name:  "kube-vip"
-								image: "ghcr.io/kube-vip/kube-vip:v0.6.2"
-								args: ["manager"]
-								env: [{
-									name:  "vip_arp"
-									value: "true"
-								}, {
-									name:  "port"
-									value: "6443"
-								}, {
-									name:  "vip_interface"
-									value: #config.machine.nic
-								}, {
-									name:  "vip_cidr"
-									value: "32"
-								}, {
-									name:  "cp_enable"
-									value: "true"
-								}, {
-									name:  "cp_namespace"
-									value: "kube-system"
-								}, {
-									name:  "vip_ddns"
-									value: "false"
-								}, {
-									name:  "vip_leaderelection"
-									value: "true"
-								}, {
-									name:  "vip_leasename"
-									value: "plndr-cp-lock"
-								}, {
-									name:  "vip_leaseduration"
-									value: "5"
-								}, {
-									name:  "vip_renewdeadline"
-									value: "3"
-								}, {
-									name:  "vip_retryperiod"
-									value: "1"
-								}, {
-									name:  "address"
-									value: #config.kubernetesCluster.controlPlaneEndpoint
-								}, {
-									name:  "prometheus_server"
-									value: ":2112"
-								}]
+								name:  "keepalived"
+								image: "docker.io/osixia/keepalived:2.0.17"
 								resources: {}
 								securityContext: capabilities: add: [
-									"NET_ADMIN",
-									"NET_RAW",
+									"NET_ADMIN", "NET_BROADCAST", "NET_RAW",
 								]
 								volumeMounts: [{
-									mountPath: "/etc/kubernetes/admin.conf"
-									name:      "kubeconfig"
+									name:      "config"
+									mountPath: "/usr/local/etc/keepalived/keepalived.conf"
+								}, {
+									name:      "check"
+									mountPath: "/etc/keepalived/check_apiserver.sh"
 								}]
-							}]
-							hostAliases: [{
-								hostnames: ["kubernetes"]
-								ip: "127.0.0.1"
 							}]
 							hostNetwork: true
 							volumes: [{
-								hostPath: path: "/etc/kubernetes/admin.conf"
-								name: "kubeconfig"
+								name: "config"
+								hostPath: {
+									path: "/etc/keepalived/keepalived.conf"
+									type: "File"
+								}
+							}, {
+								name: "check"
+								hostPath: {
+									path: "/etc/keepalived/check_apiserver.sh"
+									type: "File"
+								}
 							}]
+						}
+					})
+				}
+				"/etc/haproxy/haproxy.cfg": {
+					contents: inline: """
+						#---------------------------------------------------------------------
+						# Global settings
+						#---------------------------------------------------------------------
+						global
+						    log /dev/log local0
+						    log /dev/log local1 notice
+						    daemon
+
+						#---------------------------------------------------------------------
+						# common defaults that all the 'listen' and 'backend' sections will
+						# use if not designated in their block
+						#---------------------------------------------------------------------
+						defaults
+						    mode                    http
+						    log                     global
+						    option                  httplog
+						    option                  dontlognull
+						    option http-server-close
+						    option forwardfor       except 127.0.0.0/8
+						    option                  redispatch
+						    retries                 1
+						    timeout http-request    10s
+						    timeout queue           20s
+						    timeout connect         5s
+						    timeout client          20s
+						    timeout server          20s
+						    timeout http-keep-alive 10s
+						    timeout check           10s
+
+						#---------------------------------------------------------------------
+						# apiserver frontend which proxys to the control plane nodes
+						#---------------------------------------------------------------------
+						frontend apiserver
+						    bind *:6443
+						    mode tcp
+						    option tcplog
+						    default_backend apiserverbackend
+
+						#---------------------------------------------------------------------
+						# round robin balancing for apiserver
+						#---------------------------------------------------------------------
+						backend apiserverbackend
+						    option httpchk GET /healthz
+						    http-check expect status 200
+						    mode tcp
+						    option ssl-hello-chk
+						    balance     roundrobin
+						        server \(#config.machine.name) \(#config.machine.ip):6443 check
+								# [...]
+						"""
+				}
+				"/etc/kubernetes/manifests/haproxy.yaml": {
+					contents: inline: yaml.Marshal({
+						apiVersion: "v1"
+						kind:       "Pod"
+						metadata: {
+							name:      "haproxy"
+							namespace: "kube-system"
+						}
+						spec: {
+							containers: [{
+								name:  "haproxy"
+								image: "docker.io/library/haproxy:2.1.4"
+								livenessProbe: {
+									httpGet: {
+										host:   "localhost"
+										path:   "/healthz"
+										port:   6443
+										scheme: "HTTPS"
+									}
+								}
+								volumeMounts: [{
+									name:      "config"
+									mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
+									readOnly:  true
+								}]
+							}]
+							hostNetwork: true
+							volumes: [{
+								name: "config"
+								hostPath: {
+									path: "/etc/haproxy/haproxy.cfg"
+									type: "File"
+								}
+							}]
+						}
+					})
+				}
+				"/etc/kubernetes/manifests/registry.yaml": {
+					contents: inline: yaml.Marshal({
+						apiVersion: "v1"
+						kind:       "Pod"
+						metadata: {
+							name:      "registry"
+							namespace: "kube-system"
+						}
+						spec: {
+							containers: [{
+								name:  "zot"
+								image: "ghcr.io/project-zot/zot:v2.0.2"
+								args: ["serve", "/etc/zot/config.json"]
+								ports: [{
+									name:          "http"
+									protocol:      "TCP"
+									containerPort: 8081
+									hostPort:      8081
+								}]
+								volumeMounts: [{
+									name:      "zot-config"
+									mountPath: "/etc/zot"
+								}]}, {
+								name:  "weed-master"
+								image: "docker.io/chrislusf/seaweedfs:3.63"
+								args: [
+									"master",
+									"-ip=\(#config.kubernetesCluster.controlPlaneEndpoint)",
+								]
+								ports: [{
+									name:          "master-http"
+									protocol:      "TCP"
+									containerPort: 9333
+									hostPort:      9333
+								}]}, {
+								name:  "weed-data"
+								image: "docker.io/chrislusf/seaweedfs:3.63"
+								args: [
+									"server",
+									"-master=false",
+									"-s3",
+									"-dir=/var/lib/registry",
+									"-master.peers=\(#config.kubernetesCluster.controlPlaneEndpoint):9333",
+								]
+								ports: [{
+									name:          "volume-http"
+									protocol:      "TCP"
+									containerPort: 8080
+									hostPort:      8080
+								}, {
+									name:          "filer-http"
+									protocol:      "TCP"
+									containerPort: 8888
+									hostPort:      8888
+								}, {
+									name:          "s3-http"
+									protocol:      "TCP"
+									containerPort: 8333
+									hostPort:      8333
+								}]
+								volumeMounts: [{
+									name:      "registry"
+									mountPath: "/var/lib/registry"
+								}]
+							}]
+							hostNetwork: true
+							// TODO: Fill this in
+							securityContext: {}
+							volumes: [{
+								name: "registry"
+								hostPath: {
+									path: "/var/lib/registry"
+									type: "Directory"
+								}}, {
+								name: "zot-config"
+								hostPath: {
+									path: "/etc/zot"
+									type: "Directory"
+								}
+							}]
+						}
+					})
+				}
+				"/etc/zot/config.json": {
+					contents: inline: json.Marshal({
+						distSpecVersion: "1.0.1"
+						http: {
+							address: #config.machine.ip
+							port:    "8081"
+						}
+						storage: {
+							rootDirectory: "/var/lib/registry/zot"
+							dedupe:        false
+							gc:            true
+							storageDriver: {
+								name:           "s3"
+								bucket:         "zot-storage"
+								region:         "eu-central-1"
+								secure:         false
+								skipVerify:     true
+								regionEndpoint: "http://localhost:8333"
+							}
 						}
 					})
 				}

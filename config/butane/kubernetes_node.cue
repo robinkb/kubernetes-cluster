@@ -232,6 +232,17 @@ KubernetesNode: schemas.#Butane & {
 					}
 				}
 			}
+			// Should probably disable this on the bootstrap node.
+			"/etc/containers/registries.conf.d/100-mirror.conf": {
+				contents: inline: """
+					[[registry]]
+					location = "docker.io"
+
+					[[registry.mirror]]
+					location = "\(#config.kubernetesCluster.controlPlaneEndpoint):8081/docker.io"
+					insecure = true
+					"""
+			}
 			if #config.machine.role == "controller" {
 				"/etc/kubernetes/manifests/kube-vip.yaml": {
 					contents: inline: yaml.Marshal({
@@ -326,9 +337,8 @@ KubernetesNode: schemas.#Butane & {
 								args: [
 									"master",
 									"-ip=\(#config.kubernetesCluster.controlPlaneEndpoint)",
-									// Doesn't work with only one Volume server, and no point in having this at all
-									// without replication.
-									// "-defaultReplication=001",
+									// Replication can only be turned on once we have more than one node.
+									"-defaultReplication=000",
 									"-volumeSizeLimitMB=1024",
 								]
 								ports: [{
@@ -350,7 +360,6 @@ KubernetesNode: schemas.#Butane & {
 									"-ip=\(#config.machine.ip)",
 									"-master=false",
 									"-volume",
-									"-volume.disk=ssd",
 									"-volume.port=8080",
 									"-volume.port.grpc=18080",
 									"-volume.index=leveldb",
@@ -498,6 +507,29 @@ KubernetesNode: schemas.#Butane & {
 								skipVerify:     true
 								accesskey:      "any"
 								secretkey:      "any"
+							}
+						}
+						extensions: {
+							sync: {
+								enable:      true
+								downloadDir: "/var/lib/registry/zot/sync"
+								registries: [{
+									urls: ["https://docker.io"]
+									content: [{
+										prefix:      "**"
+										destination: "/docker.io"
+									}]
+									onDemand:  true
+									tlsVerify: true
+								}, {
+									urls: ["https://registry.k8s.io"]
+									content: [{
+										prefix:      "**"
+										destination: "/registry.k8s.io"
+									}]
+									onDemand:  true
+									tlsVerify: true
+								}]
 							}
 						}
 					})
